@@ -105,7 +105,7 @@ public class ShannonFano {
 	@Override
 	public String toString() {
 		String str = "";
-		str += "Symbol\tWeight\tShannon–Fano Code\tASCII Code\n";
+		str += "Symbol\tWeight\tShannon-Fano Code\tASCII Code\n";
 		str += "--------------------------------------------------\n";
 
 		for (Character c : compressedResult.keySet()) {
