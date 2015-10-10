@@ -7,6 +7,6 @@ Author: Seyedamirhossein Hesamian
 
 This code follow the algorithm in [this page](https://en.wikipedia.org/wiki/Shannon%E2%80%93Fano_coding#Shannon.E2.80.93Fano_Algorithm)
 
-Either run the eclipse project or run the .jar file with the following command:
+Either run the eclipse project or run the `.jar` file with the following command:
 
 `java -jar compressString.jar`
