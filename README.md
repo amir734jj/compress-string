@@ -9,4 +9,4 @@ This code follow the algorithm in [this page](https://en.wikipedia.org/wiki/Shan
 
 Either run the eclipse project or run the .jar file with the following command:
 
-java -jar compressString.jar
+`java -jar compressString.jar`
