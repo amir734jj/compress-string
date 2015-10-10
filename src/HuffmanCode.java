@@ -2,21 +2,21 @@ import java.util.HashMap;
 import java.util.PriorityQueue;
 
 abstract class HuffmanTree implements Comparable<HuffmanTree> {
-	public final int frequency;
+	public final double frequency;
 
-	public HuffmanTree(int freq) {
+	public HuffmanTree(double freq) {
 		frequency = freq;
 	}
 
 	public int compareTo(HuffmanTree tree) {
-		return frequency - tree.frequency;
+		return Double.compare(frequency, tree.frequency);
 	}
 }
 
 class HuffmanLeaf extends HuffmanTree {
 	public final char value;
 
-	public HuffmanLeaf(int freq, char val) {
+	public HuffmanLeaf(double freq, char val) {
 		super(freq);
 		value = val;
 	}
@@ -35,28 +35,60 @@ class HuffmanNode extends HuffmanTree {
 public class HuffmanCode {
 	private static final int ASCII_LENGTH = 7;
 
-	private String originalString;
-	private int originalStringLength;
+	public String originalString;
+	public int originalStringLength;
 	private HashMap<Character, String> compressedResult;
-	private HashMap<Character, Integer> characterFrequency;
+	private HashMap<Character, Double> characterFrequency;
 	private double entropy;
 	private PriorityQueue<HuffmanTree> huffmanTrees;
 	HuffmanTree mainTree;
 	private double averageLengthBefore;
 	private double averageLengthAfter;
+	private boolean probabilityIsGiven;
 
 	public HuffmanCode(String str) {
 		super();
 		originalString = str;
 		originalStringLength = str.length();
-		characterFrequency = new HashMap<Character, Integer>();
+		characterFrequency = new HashMap<Character, Double>();
 		compressedResult = new HashMap<Character, String>();
 		entropy = 0.0;
 		averageLengthBefore = 0.0;
 		averageLengthAfter = 0.0;
 		huffmanTrees = new PriorityQueue<HuffmanTree>();
+		probabilityIsGiven = false;
 
 		this.calculateFrequency();
+		this.buildTree();
+		this.buildString(mainTree, new StringBuffer(), compressedResult);
+		this.calculateEntropy();
+		this.calculateAverageLengthBeforeCompression();
+		this.calculateAverageLengthAfterCompression();
+	}
+
+	public HuffmanCode(String str, HashMap<Character, Double> probablity) {
+		super();
+		originalString = str;
+		originalStringLength = str.length();
+
+		characterFrequency = new HashMap<Character, Double>();
+
+		double checkPoint = 0;
+		for (Character c : originalString.toCharArray()) {
+			checkPoint += probablity.get(c);
+			characterFrequency.put(c, originalStringLength * probablity.get(c));
+		}
+
+		assert checkPoint == 1.0; // Invariant, make sure sum of probabilities
+									// is 1
+
+		compressedResult = new HashMap<Character, String>();
+		entropy = 0.0;
+		averageLengthBefore = 0.0;
+		averageLengthAfter = 0.0;
+		huffmanTrees = new PriorityQueue<HuffmanTree>();
+		probabilityIsGiven = true;
+
 		this.buildTree();
 		this.buildString(mainTree, new StringBuffer(), compressedResult);
 		this.calculateEntropy();
@@ -69,7 +101,8 @@ public class HuffmanCode {
 			huffmanTrees.offer(new HuffmanLeaf(characterFrequency.get(c), c));
 		}
 
-		assert huffmanTrees.size() >= 1; // Invariant
+		assert huffmanTrees.size() >= 1; // Invariant, make sure there is at
+											// least one tree exist
 
 		while (huffmanTrees.size() >= 2) {
 			HuffmanTree a = huffmanTrees.poll();
@@ -81,7 +114,7 @@ public class HuffmanCode {
 	}
 
 	private void buildString(HuffmanTree tree, StringBuffer prefix, HashMap<Character, String> result) {
-		assert tree != null; // Invariant
+		assert tree != null; // Invariant, make sure tree is not empty
 		if (tree instanceof HuffmanLeaf) {
 			HuffmanLeaf leaf = (HuffmanLeaf) tree;
 
@@ -101,13 +134,11 @@ public class HuffmanCode {
 	}
 
 	private void calculateFrequency() {
-		for (int i = 0; i < originalString.length(); i++) {
-			char c = originalString.charAt(i);
-			Integer val = characterFrequency.get(new Character(c));
-			if (val != null) {
-				characterFrequency.put(c, new Integer(val + 1));
+		for (Character c : originalString.toCharArray()) {
+			if (characterFrequency.containsKey(c)) {
+				characterFrequency.put(c, new Double(characterFrequency.get(c) + 1.0));
 			} else {
-				characterFrequency.put(c, 1);
+				characterFrequency.put(c, 1.0);
 			}
 		}
 	}
@@ -136,22 +167,40 @@ public class HuffmanCode {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
+	public HashMap<Character, Double> getCharacterFrequency() {
+		return (HashMap<Character, Double>) characterFrequency.clone();
+	}
+
+	@SuppressWarnings("unchecked")
+	public HashMap<Character, String> getCompressedResult() {
+		return (HashMap<Character, String>) compressedResult.clone();
+	}
+
 	@Override
 	public String toString() {
 		String str = "";
-		str += "Symbol\tWeight\tHuffman Code\t\tASCII Code\n";
-		str += "--------------------------------------------------\n";
+		str += "*** Probability is" + (probabilityIsGiven ? " " : " Not ") + "Given. "
+				+ (probabilityIsGiven ? "We did not calculate the probability."
+						: "Probability was calculated using frequency of each character in the given String.")
+				+ "\n";
+		str += "Original String: \"" + originalString + "\"\n";
+		str += "------------------------------------------------------------------------\n";
+		str += "Symbol\t\tFrequency\tProbability\tHuffman Code\tASCII Code\n";
+		str += "------------------------------------------------------------------------\n";
 
 		for (Character c : compressedResult.keySet()) {
-			str += "'" + c + "'" + "\t" + characterFrequency.get(c) + "\t" + compressedResult.get(c) + "\t\t\t"
-					+ Integer.toBinaryString((int) c);
+			str += "'" + c + "'" + "\t\t" + Math.round(characterFrequency.get(c) * 100.0) / 100.0 + "\t\t"
+					+ Math.round(characterFrequency.get(c) / originalStringLength * 10000.0) / 10000.0 + "\t\t"
+					+ compressedResult.get(c) + "\t\t" + Integer.toBinaryString((int) c);
 			str += "\n";
 		}
-		str += "--------------------------------------------------\n";
+		str += "------------------------------------------------------------------------\n";
 		str += "Efficiency before Compression: " + 100 * (Math.round((entropy / averageLengthBefore) * 100.0) / 100.0)
 				+ "%\n";
 		str += "Efficiency after Compression: " + 100 * (Math.round((entropy / averageLengthAfter) * 100.0) / 100.0)
 				+ "%\n";
+		str += "------------------------------------------------------------------------\n";
 		return str;
 	}
 

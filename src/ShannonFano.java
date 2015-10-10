@@ -11,34 +11,66 @@ public class ShannonFano {
 	private String originalString;
 	private int originalStringLength;
 	private HashMap<Character, String> compressedResult;
-	private HashMap<Character, Integer> characterFrequency;
+	private HashMap<Character, Double> characterFrequency;
 	private double entropy;
 	private double averageLengthBefore;
 	private double averageLengthAfter;
+	private boolean probabilityIsGiven;
 
 	public ShannonFano(String str) {
 		super();
 		originalString = str;
 		originalStringLength = str.length();
-		characterFrequency = new HashMap<Character, Integer>();
+		characterFrequency = new HashMap<Character, Double>();
 		compressedResult = new HashMap<Character, String>();
 		entropy = 0.0;
 		averageLengthBefore = 0.0;
 		averageLengthAfter = 0.0;
+		probabilityIsGiven = false;
 
 		this.calculateFrequency();
 		this.compressString();
 		this.calculateEntropy();
 		this.calculateAverageLengthBeforeCompression();
 		this.calculateAverageLengthAfterCompression();
+
+	}
+
+	public ShannonFano(String str, HashMap<Character, Double> probablity) {
+		super();
+		originalString = str;
+		originalStringLength = str.length();
+
+		characterFrequency = new HashMap<Character, Double>();
+
+		double checkPoint = 0;
+		for (Character c : originalString.toCharArray()) {
+			checkPoint += probablity.get(c);
+			characterFrequency.put(c, originalStringLength * probablity.get(c));
+		}
+
+		assert checkPoint == 1.0; // Invariant, make sure sum of probabilities
+									// is 1
+
+		compressedResult = new HashMap<Character, String>();
+		entropy = 0.0;
+		averageLengthBefore = 0.0;
+		averageLengthAfter = 0.0;
+		probabilityIsGiven = true;
+
+		this.compressString();
+		this.calculateEntropy();
+		this.calculateAverageLengthBeforeCompression();
+		this.calculateAverageLengthAfterCompression();
+
 	}
 
 	private void compressString() {
 		List<Character> charList = new ArrayList<Character>();
 
-		Iterator<Entry<Character, Integer>> entries = characterFrequency.entrySet().iterator();
+		Iterator<Entry<Character, Double>> entries = characterFrequency.entrySet().iterator();
 		while (entries.hasNext()) {
-			Entry<Character, Integer> entry = entries.next();
+			Entry<Character, Double> entry = entries.next();
 			charList.add(entry.getKey());
 		}
 
@@ -67,13 +99,11 @@ public class ShannonFano {
 	}
 
 	private void calculateFrequency() {
-		for (int i = 0; i < originalString.length(); i++) {
-			char c = originalString.charAt(i);
-			Integer val = characterFrequency.get(new Character(c));
-			if (val != null) {
-				characterFrequency.put(c, new Integer(val + 1));
+		for (Character c : originalString.toCharArray()) {
+			if (characterFrequency.containsKey(c)) {
+				characterFrequency.put(c, new Double(characterFrequency.get(c) + 1.0));
 			} else {
-				characterFrequency.put(c, 1);
+				characterFrequency.put(c, 1.0);
 			}
 		}
 	}
@@ -102,22 +132,40 @@ public class ShannonFano {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
+	public HashMap<Character, Double> getCharacterFrequency() {
+		return (HashMap<Character, Double>) characterFrequency.clone();
+	}
+
+	@SuppressWarnings("unchecked")
+	public HashMap<Character, String> getCompressedResult() {
+		return (HashMap<Character, String>) compressedResult.clone();
+	}
+
 	@Override
 	public String toString() {
 		String str = "";
-		str += "Symbol\tWeight\tShannon-Fano Code\tASCII Code\n";
-		str += "--------------------------------------------------\n";
+		str += "*** Probability is" + (probabilityIsGiven ? " " : " Not ") + "Given. "
+				+ (probabilityIsGiven ? "We did not calculate the probability."
+						: "Probability was calculated using frequency of each character in the given String.")
+				+ "\n";
+		str += "Original String: \"" + originalString + "\"\n";
+		str += "------------------------------------------------------------------------\n";
+		str += "Symbol\t\tFrequency\tProbability\tShannon-F Code\tASCII Code\n";
+		str += "------------------------------------------------------------------------\n";
 
 		for (Character c : compressedResult.keySet()) {
-			str += "'" + c + "'" + "\t" + characterFrequency.get(c) + "\t" + compressedResult.get(c) + "\t\t\t"
-					+ Integer.toBinaryString((int) c);
+			str += "'" + c + "'" + "\t\t" + Math.round(characterFrequency.get(c) * 100.0) / 100.0 + "\t\t"
+					+ Math.round(characterFrequency.get(c) / originalStringLength * 10000.0) / 10000.0 + "\t\t"
+					+ compressedResult.get(c) + "\t\t" + Integer.toBinaryString((int) c);
 			str += "\n";
 		}
-		str += "--------------------------------------------------\n";
+		str += "------------------------------------------------------------------------\n";
 		str += "Efficiency before Compression: " + 100 * (Math.round((entropy / averageLengthBefore) * 100.0) / 100.0)
 				+ "%\n";
 		str += "Efficiency after Compression: " + 100 * (Math.round((entropy / averageLengthAfter) * 100.0) / 100.0)
 				+ "%\n";
+		str += "------------------------------------------------------------------------\n";
 		return str;
 	}
 }
